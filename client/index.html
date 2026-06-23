@@ -11,7 +11,75 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
   </head>
   <body class="bg-[#F0F6FF] text-[#0F172A]">
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        #initial-loader {
+          position: fixed;
+          top: 0; left: 0; width: 100vw; height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background-color: #F0F6FF;
+          z-index: 9999;
+          font-family: 'Inter', sans-serif;
+        }
+        .logo-container {
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .logo-icon {
+          width: 64px;
+          height: 64px;
+          fill: #2563eb;
+          margin-bottom: 16px;
+        }
+        .logo-text {
+          font-size: 2.25rem;
+          font-weight: 700;
+          color: #0f172a;
+          letter-spacing: -0.025em;
+        }
+        .loading-dots {
+          display: flex;
+          margin-top: 16px;
+          gap: 6px;
+        }
+        .dot {
+          width: 10px;
+          height: 10px;
+          background-color: #2563eb;
+          border-radius: 50%;
+          animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: .8; transform: scale(0.95); }
+        }
+        @keyframes bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+      </style>
+      <div id="initial-loader">
+        <div class="logo-container">
+          <svg class="logo-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/>
+          </svg>
+          <div class="logo-text">CareSync</div>
+        </div>
+        <div class="loading-dots">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
