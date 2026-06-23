@@ -1,25 +1,30 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
-const generateToken = (id) => {
+// ─── Token Generator ───────────────────────────────────────────────────────────
+const generateToken = (id, role) => {
   if (!process.env.JWT_SECRET) {
     throw new Error('JWT_SECRET is not configured in the environment variables');
   }
   return jwt.sign(
-    { id },
+    { id, role },
     process.env.JWT_SECRET,
-    {
-      expiresIn: process.env.JWT_EXPIRE || '7d',
-    }
+    { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
 };
 
-// @desc    Register a new user (patient, doctor, or admin)
+// ─── Register ──────────────────────────────────────────────────────────────────
+// @desc    Register a new user (patient or doctor only — admin is blocked)
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, phone, role, department, experience, consultationFee } = req.body;
+    const { name, email, phone, password, role, specialty, experience, consultationFee } = req.body;
+
+    // Block admin self-registration
+    if (role === 'admin') {
+      return res.status(403).json({ success: false, message: 'Cannot register as admin' });
+    }
 
     if (!name || !email || !password || !phone) {
       return res.status(400).json({ success: false, message: 'Please provide all required fields' });
@@ -30,7 +35,8 @@ const registerUser = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'User already exists with this email' });
     }
 
-    const resolvedRole = role || 'patient';
+    // Force role to either doctor or patient only
+    const resolvedRole = role === 'doctor' ? 'doctor' : 'patient';
 
     const user = await User.create({
       name,
@@ -40,10 +46,11 @@ const registerUser = async (req, res, next) => {
       role: resolvedRole,
     });
 
+    // Auto-create Doctor profile if registering as doctor
     if (resolvedRole === 'doctor') {
       const Doctor = require('../models/Doctor');
-      const timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "14:00", "14:30", "15:00"];
-      
+      const timeSlots = ['09:00', '09:30', '10:00', '10:30', '11:00', '14:00', '14:30', '15:00'];
+
       const cleanName = name.replace(/^(Dr\.|Mr\.|Ms\.)\s+/i, '');
       const parts = cleanName.split(/\s+/).filter((p) => p.length > 0);
       let initials = 'DR';
@@ -53,7 +60,7 @@ const registerUser = async (req, res, next) => {
         initials = parts[0].substring(0, 2).toUpperCase();
       }
 
-      const specialtyValue = req.body.specialty || 'General Medicine';
+      const specialtyValue = specialty || 'General Medicine';
 
       await Doctor.create({
         userId: user._id,
@@ -70,7 +77,7 @@ const registerUser = async (req, res, next) => {
       });
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     return res.status(201).json({
       success: true,
@@ -80,7 +87,6 @@ const registerUser = async (req, res, next) => {
           id: user._id,
           name: user.name,
           email: user.email,
-          phone: user.phone,
           role: user.role,
         },
       },
@@ -90,6 +96,7 @@ const registerUser = async (req, res, next) => {
   }
 };
 
+// ─── Login ─────────────────────────────────────────────────────────────────────
 // @desc    Authenticate user & get token
 // @route   POST /api/auth/login
 // @access  Public
@@ -103,17 +110,22 @@ const loginUser = async (req, res, next) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(400).json({ success: false, message: 'Invalid email or password' });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(400).json({ success: false, message: 'Invalid email or password' });
     }
 
-    const token = generateToken(user._id);
+    // Only the designated admin email can log in as admin
+    if (user.role === 'admin' && user.email !== 'caresync@gmail.com') {
+      return res.status(403).json({ success: false, message: 'Unauthorized access' });
+    }
 
-    return res.json({
+    const token = generateToken(user._id, user.role);
+
+    return res.status(200).json({
       success: true,
       data: {
         token,
@@ -121,7 +133,6 @@ const loginUser = async (req, res, next) => {
           id: user._id,
           name: user.name,
           email: user.email,
-          phone: user.phone,
           role: user.role,
         },
       },
@@ -131,6 +142,7 @@ const loginUser = async (req, res, next) => {
   }
 };
 
+// ─── Get Me ────────────────────────────────────────────────────────────────────
 // @desc    Get current logged in user details
 // @route   GET /api/auth/me
 // @access  Protected

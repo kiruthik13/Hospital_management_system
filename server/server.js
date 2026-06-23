@@ -50,7 +50,15 @@ const PORT = process.env.PORT || 5000;
 
 // Connect to Database and start listening
 connectDB().then(() => {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    
+    // Verify SMTP configuration on server startup
+    try {
+      const { verifyMailer } = require('./utils/mailer');
+      await verifyMailer();
+    } catch (err) {
+      console.error('⚠️ Unexpected error verifying mailer:', err.message);
+    }
   });
 });

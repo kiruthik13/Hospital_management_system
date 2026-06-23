@@ -242,7 +242,6 @@ const Register = () => {
                 {[
                   { value: 'patient', label: '🧑‍⚕️ Patient', color: '#0ea5e9' },
                   { value: 'doctor', label: '👨‍⚕️ Doctor', color: '#10b981' },
-                  { value: 'admin', label: '🔧 Admin', color: '#8b5cf6' },
                 ].map(({ value, label, color }) => (
                   <button
                     key={value}
@@ -489,7 +488,7 @@ const Register = () => {
                 </>
               ) : (
                 <>
-                  {formData.role === 'doctor' ? '🩺' : formData.role === 'admin' ? '🔧' : '✨'} Create Account
+                  {formData.role === 'doctor' ? '🩺' : '✨'} Create Account
                 </>
               )}
             </button>

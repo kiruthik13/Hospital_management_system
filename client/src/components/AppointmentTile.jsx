@@ -1,5 +1,6 @@
 import React from 'react';
 import StatusBadge from './StatusBadge';
+import generateReceipt from '../utils/generateReceipt';
 
 const AppointmentTile = ({ appointment, onAction, role = 'patient' }) => {
   const { _id, doctor, patient, department, date, slot, status, notes, patientName } = appointment;
@@ -10,6 +11,7 @@ const AppointmentTile = ({ appointment, onAction, role = 'patient' }) => {
   };
 
   const isUpcoming = ['pending', 'confirmed'].includes(status);
+  const canDownloadReceipt = ['confirmed', 'completed'].includes(status);
 
   return (
     <div className="flex flex-col justify-between p-5 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -18,17 +20,13 @@ const AppointmentTile = ({ appointment, onAction, role = 'patient' }) => {
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             {role === 'doctor' ? (
-              // If doctor, show patient info
               <div className="flex flex-col">
                 <h4 className="font-display text-sm font-bold text-slate-800 truncate">
                   {patientName || patient?.name || 'Unknown Patient'}
                 </h4>
-                <p className="text-xs font-semibold text-slate-400">
-                  Patient Profile
-                </p>
+                <p className="text-xs font-semibold text-slate-400">Patient Profile</p>
               </div>
             ) : (
-              // If patient/admin, show doctor info
               <div className="flex items-center gap-2.5">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-light font-display text-xs font-bold text-primary">
                   {doctor?.initials || 'DR'}
@@ -63,7 +61,7 @@ const AppointmentTile = ({ appointment, onAction, role = 'patient' }) => {
           </div>
         </div>
 
-        {/* Notes if present */}
+        {/* Notes */}
         {notes && (
           <div className="text-xs text-slate-500 bg-slate-50 border border-dashed border-slate-200 rounded-xl p-3 mt-1">
             <span className="font-bold text-slate-600 block mb-1">Symptoms/Notes:</span>
@@ -73,43 +71,58 @@ const AppointmentTile = ({ appointment, onAction, role = 'patient' }) => {
       </div>
 
       {/* Action Buttons Footer */}
-      {isUpcoming && onAction && (
-        <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-end gap-2.5">
-          {role === 'patient' && (
-            <button
-              onClick={() => onAction(_id, 'cancelled')}
-              className="px-3.5 py-1.5 font-display text-xs font-bold text-rose-600 border border-rose-100 hover:border-rose-300 hover:bg-rose-50/50 rounded-xl transition-all duration-200 focus:outline-none"
-            >
-              Cancel Appointment
-            </button>
-          )}
+      <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between gap-2 flex-wrap">
 
-          {role === 'doctor' && (
-            <>
-              <button
-                onClick={() => onAction(_id, 'no-show')}
-                className="px-3.5 py-1.5 font-display text-xs font-bold text-slate-600 border border-slate-200 hover:border-slate-400 hover:bg-slate-50 rounded-xl transition-all duration-200 focus:outline-none"
-              >
-                No-Show
-              </button>
-              <button
-                onClick={() => onAction(_id, 'completed')}
-                className="px-3.5 py-1.5 font-display text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm shadow-primary/10 rounded-xl transition-all duration-200 focus:outline-none"
-              >
-                Mark Completed
-              </button>
-            </>
-          )}
+        {/* PDF Receipt Button (patient view, confirmed/completed) */}
+        {role === 'patient' && canDownloadReceipt && (
+          <button
+            onClick={() => generateReceipt(appointment)}
+            className="px-3.5 py-1.5 font-display text-xs font-bold text-primary border border-primary/20 hover:border-primary/50 hover:bg-primary-light rounded-xl transition-all duration-200 focus:outline-none flex items-center gap-1.5"
+          >
+            📄 Receipt
+          </button>
+        )}
 
-          {role === 'admin' && (
-            <div className="flex gap-2 w-full justify-between items-center">
+        {/* If no receipt button, add spacer */}
+        {!(role === 'patient' && canDownloadReceipt) && <div />}
+
+        {/* Action Buttons */}
+        {isUpcoming && onAction && (
+          <div className="flex items-center gap-2">
+            {role === 'patient' && (
               <button
                 onClick={() => onAction(_id, 'cancelled')}
                 className="px-3.5 py-1.5 font-display text-xs font-bold text-rose-600 border border-rose-100 hover:border-rose-300 hover:bg-rose-50/50 rounded-xl transition-all duration-200 focus:outline-none"
               >
                 Cancel
               </button>
-              <div className="flex gap-2">
+            )}
+
+            {role === 'doctor' && (
+              <>
+                <button
+                  onClick={() => onAction(_id, 'no-show')}
+                  className="px-3.5 py-1.5 font-display text-xs font-bold text-slate-600 border border-slate-200 hover:border-slate-400 hover:bg-slate-50 rounded-xl transition-all duration-200 focus:outline-none"
+                >
+                  No-Show
+                </button>
+                <button
+                  onClick={() => onAction(_id, 'completed')}
+                  className="px-3.5 py-1.5 font-display text-xs font-bold text-white bg-primary hover:bg-primary-dark shadow-sm shadow-primary/10 rounded-xl transition-all duration-200 focus:outline-none"
+                >
+                  Mark Completed
+                </button>
+              </>
+            )}
+
+            {role === 'admin' && (
+              <>
+                <button
+                  onClick={() => onAction(_id, 'cancelled')}
+                  className="px-3.5 py-1.5 font-display text-xs font-bold text-rose-600 border border-rose-100 hover:border-rose-300 hover:bg-rose-50/50 rounded-xl transition-all duration-200 focus:outline-none"
+                >
+                  Cancel
+                </button>
                 <button
                   onClick={() => onAction(_id, 'no-show')}
                   className="px-3.5 py-1.5 font-display text-xs font-bold text-slate-600 border border-slate-200 hover:border-slate-400 hover:bg-slate-50 rounded-xl transition-all duration-200 focus:outline-none"
@@ -122,11 +135,11 @@ const AppointmentTile = ({ appointment, onAction, role = 'patient' }) => {
                 >
                   Complete
                 </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

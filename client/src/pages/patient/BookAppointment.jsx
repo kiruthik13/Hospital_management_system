@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../hooks/useToast';
 import StepIndicator from '../../components/StepIndicator';
+import generateReceipt from '../../utils/generateReceipt';
 import api from '../../api/axios';
 
 const BookAppointment = () => {
@@ -235,6 +236,16 @@ const BookAppointment = () => {
               className="flex-1 py-3 bg-primary hover:bg-primary-dark text-white font-display text-sm font-bold rounded-xl shadow-md shadow-primary/10 transition-all duration-200"
             >
               View My Appointments
+            </button>
+            <button
+              onClick={() => generateReceipt({
+                ...successBooking,
+                doctor: selectedDoctor,
+                department: selectedDept,
+              })}
+              className="flex-1 py-3 border-2 border-primary text-primary hover:bg-primary-light font-display text-sm font-bold rounded-xl transition-all duration-200"
+            >
+              📄 Download Receipt
             </button>
             <button
               onClick={() => navigate('/patient/dashboard')}

@@ -1,5 +1,11 @@
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
+const User = require('../models/User');
+const {
+  sendAppointmentConfirmation,
+  sendAppointmentCancellation,
+  sendDoctorNotification,
+} = require('../utils/mailer');
 
 // @desc    Book an appointment (Patient only)
 // @route   POST /api/appointments
@@ -14,13 +20,12 @@ const bookAppointment = async (req, res, next) => {
     }
 
     // 1. Verify doctor exists and is active
-    const doctorObj = await Doctor.findById(doctor);
+    const doctorObj = await Doctor.findById(doctor).populate('userId', 'email name');
     if (!doctorObj || !doctorObj.isActive) {
       return res.status(404).json({ success: false, message: 'Doctor not found or inactive' });
     }
 
     // 2. Check if the day is available for this doctor
-    // date comes as YYYY-MM-DD. Convert to day of week short code (Mon, Tue, etc.)
     const parsedDate = new Date(date);
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const selectedDay = daysOfWeek[parsedDate.getDay()];
@@ -33,7 +38,7 @@ const bookAppointment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Selected time slot is invalid for this doctor' });
     }
 
-    // 4. Double booking validation: check if doctor has another active booking at that date & slot
+    // 4. Double booking validation
     const conflict = await Appointment.findOne({
       doctor,
       date,
@@ -45,7 +50,14 @@ const bookAppointment = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'This slot is already booked for this doctor' });
     }
 
-    // 5. Create appointment (default status: confirmed)
+    // 5. Populate department name for email
+    const Department = require('../models/Department');
+    const deptObj = await Department.findById(department);
+
+    // 6. Get patient email
+    const patientUser = await User.findById(patientId).select('email name');
+
+    // 7. Create appointment
     const appointment = await Appointment.create({
       patient: patientId,
       doctor,
@@ -56,6 +68,37 @@ const bookAppointment = async (req, res, next) => {
       notes: notes || '',
       patientName,
     });
+
+    // 8. Send emails (non-blocking — errors must NOT fail booking)
+    try {
+      if (patientUser?.email) {
+        await sendAppointmentConfirmation(
+          patientUser.email,
+          patientName,
+          doctorObj.name,
+          deptObj?.name || 'Medical',
+          date,
+          slot,
+          doctorObj.consultationFee
+        );
+      }
+    } catch (emailErr) {
+      console.error('Patient confirmation email error (non-fatal):', emailErr.message);
+    }
+
+    try {
+      if (doctorObj.userId?.email) {
+        await sendDoctorNotification(
+          doctorObj.userId.email,
+          doctorObj.name,
+          patientName,
+          date,
+          slot
+        );
+      }
+    } catch (emailErr) {
+      console.error('Doctor notification email error (non-fatal):', emailErr.message);
+    }
 
     return res.status(201).json({
       success: true,
@@ -175,18 +218,36 @@ const updateAppointmentStatus = async (req, res, next) => {
 // @access  Private (Patient)
 const cancelAppointment = async (req, res, next) => {
   try {
-    const appointment = await Appointment.findById(req.params.id);
+    const appointment = await Appointment.findById(req.params.id)
+      .populate('doctor')
+      .populate('patient', 'email name');
+
     if (!appointment) {
       return res.status(404).json({ success: false, message: 'Appointment not found' });
     }
 
     // Verify ownership
-    if (appointment.patient.toString() !== req.user.id) {
+    if (appointment.patient._id.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Access denied: not your appointment' });
     }
 
     appointment.status = 'cancelled';
     await appointment.save();
+
+    // Send cancellation email (non-blocking)
+    try {
+      if (appointment.patient?.email) {
+        await sendAppointmentCancellation(
+          appointment.patient.email,
+          appointment.patientName || appointment.patient.name,
+          appointment.doctor?.name || 'Doctor',
+          appointment.date,
+          appointment.slot
+        );
+      }
+    } catch (emailErr) {
+      console.error('Cancellation email error (non-fatal):', emailErr.message);
+    }
 
     return res.json({
       success: true,

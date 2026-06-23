@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import StatCard from '../../components/StatCard';
 import AppointmentTile from '../../components/AppointmentTile';
+import AppointmentCalendar from '../../components/AppointmentCalendar';
 import api from '../../api/axios';
 import { useToast } from '../../hooks/useToast';
 
@@ -197,6 +198,8 @@ const PatientDashboard = () => {
               </div>
             )}
           </div>
+          {/* Appointment Calendar */}
+          <AppointmentCalendar appointments={appointments} role="patient" />
         </>
       )}
     </div>
